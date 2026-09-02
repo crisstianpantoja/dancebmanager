@@ -1,0 +1,10 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Sin esto `netlify dev` toma el comando de [build], compila y termina en lugar
+# de levantar un servidor. `npm run dev` sirve el front con Vite y las mismas
+# funciones de /api en el puerto 3000.
+[dev]
+  command = "npm run dev"
+  targetPort = 3000

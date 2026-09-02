@@ -1,0 +1,151 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'DM Sans', sans-serif;
+  --font-display: 'Outfit', sans-serif;
+  
+  --color-magenta: #F72585;
+  --color-magenta-dark: #B32E7D;
+  --color-bg: #0F0D15;
+  --color-surface: #191721;
+  --color-surface-hover: #211E2C;
+  --color-ink: #FAF9FC;
+  --color-ink-muted: #A39EBA;
+  
+  --color-success: #37D9A6;
+  --color-pending: #F5B841;
+  --color-error: #F05576;
+  /*
+    Mismo ámbar que --color-pending. Los avisos de la aplicación ya usaban
+    utilidades `*-warning`, que sin esta declaración Tailwind no genera: esos
+    avisos salían sin color de fondo, borde ni texto.
+  */
+  --color-warning: #F5B841;
+  
+  --color-accent-academy: #7CC3FF;
+  --color-accent-dj: #B084F5;
+
+  /* Radio único para inputs, botones, selects y el selector del login. */
+  --radius-control: 0.75rem;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--color-bg); }
+::-webkit-scrollbar-thumb { background: var(--color-surface-hover); border-radius: 3px; }
+
+/* Custom utility classes */
+
+/* Botones e inputs comparten el mismo radio (--radius-control). */
+.btn-primary {
+  @apply bg-magenta hover:opacity-90 text-white px-5 py-2.5 rounded-xl font-medium transition-all shadow-md active:scale-95
+         outline-none focus-visible:ring-2 focus-visible:ring-magenta focus-visible:ring-offset-2 focus-visible:ring-offset-bg;
+}
+
+.btn-secondary {
+  @apply bg-surface hover:bg-surface-hover text-ink px-5 py-2.5 rounded-xl font-medium transition-all border border-white/10 active:scale-95
+         outline-none focus-visible:ring-2 focus-visible:ring-magenta focus-visible:ring-offset-2 focus-visible:ring-offset-bg;
+}
+
+/*
+  Botón de sólo icono. El área clickeable es de 40x40 aunque el icono mida 16,
+  que es el mínimo cómodo para el dedo, y el hover se ve sin ambigüedad.
+*/
+.icon-btn {
+  @apply inline-flex items-center justify-center w-10 h-10 shrink-0 rounded-xl border border-transparent
+         text-ink-muted transition-colors outline-none
+         hover:text-magenta hover:bg-magenta/15 hover:border-magenta/30
+         focus-visible:ring-2 focus-visible:ring-magenta focus-visible:ring-offset-2 focus-visible:ring-offset-surface;
+}
+
+/* Igual que .icon-btn, en rojo suave: eliminar se distingue del resto. */
+.icon-btn-danger {
+  @apply inline-flex items-center justify-center w-10 h-10 shrink-0 rounded-xl border border-transparent
+         text-error/80 transition-colors outline-none
+         hover:text-error hover:bg-error/15 hover:border-error/30
+         focus-visible:ring-2 focus-visible:ring-error focus-visible:ring-offset-2 focus-visible:ring-offset-surface;
+}
+
+.card {
+  @apply bg-surface rounded-2xl p-6 border border-white/5 shadow-sm;
+}
+h1, h2, h3, h4, h5, h6, .font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+.input {
+  @apply bg-bg border border-ink-muted/20 rounded-xl px-4 py-2 text-ink focus:border-magenta focus:outline-none w-full transition-colors;
+}
+
+/* TeacherPortal usa esta clase; se comporta igual que .input. */
+.input-field {
+  @apply bg-bg border border-ink-muted/20 rounded-xl px-4 py-2 text-ink focus:border-magenta focus:outline-none w-full transition-colors;
+}
+
+/*
+  Los <select> traen el control nativo del sistema, que no encaja con el fondo
+  oscuro. Se apaga (`appearance: none`) y se dibuja la flecha como imagen de
+  fondo, de modo que un select se ve exactamente igual que un input.
+*/
+select.input,
+select.input-field {
+  @apply appearance-none cursor-pointer pr-11;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23A39EBA' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 0.9rem center;
+  background-size: 1rem;
+}
+
+/* La lista desplegada la pinta el sistema: al menos se le dan los colores. */
+select.input option,
+select.input-field option {
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+}
+
+/* Los placeholders son sugerencias, no contenido: quedan más apagados que un
+   valor escrito, pero con contraste suficiente para leerse de un vistazo. */
+.input::placeholder,
+.input-field::placeholder,
+input::placeholder,
+textarea::placeholder {
+  color: color-mix(in srgb, var(--color-ink-muted) 82%, transparent);
+  opacity: 1;
+}
+
+.label {
+  @apply block text-sm font-medium text-ink-muted mb-1;
+}
+
+/* Texto de ayuda bajo un campo, para lo que no cabe en el placeholder. */
+.hint {
+  @apply mt-1.5 text-xs leading-snug text-ink-muted/70;
+}
+
+/* Radar Chart specific styling */
+.recharts-polar-grid-angle line,
+.recharts-polar-grid-concentric polygon {
+  stroke: var(--color-ink-muted);
+  opacity: 0.2;
+}
+.recharts-polar-angle-axis-tick-value {
+  fill: var(--color-ink);
+  font-size: 10px;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}

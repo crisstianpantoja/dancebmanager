@@ -1,0 +1,1 @@
+ALTER TABLE "settings" ADD COLUMN "teacher_portal_logo_url" text;
