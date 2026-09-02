@@ -374,10 +374,16 @@ export function claseKeyManual(alumnoId: string, fecha: string, hora: string): s
   return `M:${alumnoId}:${fecha}:${hora}`;
 }
 
+/** Identidad de una clase de la programación recurrente (tiene fila propia). */
+export function claseKeyProgramada(claseId: string): string {
+  return `C:${claseId}`;
+}
+
 export const CATEGORIAS: ClaseCategoria[] = [
   'Básica',
   'Intermedia',
   'Avanzada',
+  'Grupo',
   'Privada',
   'Evento',
   'Taller',
@@ -394,6 +400,7 @@ export const CATEGORIA_ESTILO: Record<ClaseCategoria, { color: string; badge: st
   'Básica': { color: '#7CC3FF', badge: 'bg-accent-academy/20 text-accent-academy', punto: 'bg-accent-academy' },
   'Intermedia': { color: '#F5B841', badge: 'bg-pending/20 text-pending', punto: 'bg-pending' },
   'Avanzada': { color: '#F72585', badge: 'bg-magenta/20 text-magenta', punto: 'bg-magenta' },
+  'Grupo': { color: '#7CC3FF', badge: 'bg-accent-academy/20 text-accent-academy', punto: 'bg-accent-academy' },
   'Privada': { color: '#B32E7D', badge: 'bg-magenta-dark/30 text-magenta', punto: 'bg-magenta-dark' },
   'Evento': { color: '#B084F5', badge: 'bg-accent-dj/20 text-accent-dj', punto: 'bg-accent-dj' },
   'Taller': { color: '#37D9A6', badge: 'bg-success/20 text-success', punto: 'bg-success' },

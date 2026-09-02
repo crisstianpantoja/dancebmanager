@@ -36,10 +36,10 @@ const COBRABLES = ['Mensualidad', 'Paquete de clases'];
 const RECIEN_VENCIDO_DIAS = 7;
 
 /** Orígenes válidos de una clase. 'manual' es la que no está en la agenda. */
-const TIPOS_DE_CLASE = ['academia', 'sesion', 'evento', 'manual'];
+const TIPOS_DE_CLASE = ['academia', 'sesion', 'evento', 'programada', 'manual'];
 
 /** Categorías reconocidas. Cualquier otra se guarda como nula. */
-const CATEGORIAS = ['Básica', 'Intermedia', 'Avanzada', 'Privada', 'Evento', 'Taller'];
+const CATEGORIAS = ['Básica', 'Intermedia', 'Avanzada', 'Grupo', 'Privada', 'Evento', 'Taller'];
 
 export type EstadoPlan = 'cupo' | 'ilimitada' | 'sin_cupo' | 'vencido' | 'sin_plan';
 
@@ -72,6 +72,7 @@ interface ClaseInput {
   academiaId?: unknown;
   sessionId?: unknown;
   eventId?: unknown;
+  claseId?: unknown;
 }
 
 // ---------------------------------------------------------------------------
@@ -310,6 +311,7 @@ function leerClase(input: ClaseInput, alumnoId: string): {
   academiaId: string | null;
   sessionId: string | null;
   eventId: string | null;
+  claseId: string | null;
 } {
   const tipo = texto(input.tipo, 'academia');
   if (!TIPOS_DE_CLASE.includes(tipo)) {
@@ -342,6 +344,7 @@ function leerClase(input: ClaseInput, alumnoId: string): {
     academiaId: texto(input.academiaId) || null,
     sessionId: texto(input.sessionId) || null,
     eventId: texto(input.eventId) || null,
+    claseId: texto(input.claseId) || null,
   };
 }
 
@@ -405,6 +408,7 @@ export async function registrarAsistencia(
     academiaId: clase.academiaId,
     sessionId: clase.sessionId,
     eventId: clase.eventId,
+    claseId: clase.claseId,
     fecha: clase.fecha,
     hora: clase.hora,
     categoria: clase.categoria,

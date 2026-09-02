@@ -248,9 +248,10 @@ export function Attendance() {
       academies: data.academies,
       sessions: data.sessions,
       events: data.events,
+      classOccurrences: data.classOccurrences,
       academyLogs: data.academyLogs,
     }),
-    [data.academies, data.sessions, data.events, data.academyLogs]
+    [data.academies, data.sessions, data.events, data.classOccurrences, data.academyLogs]
   );
 
   const clases = useMemo(() => clasesDelDia(fuentes, fecha), [fuentes, fecha]);
@@ -396,6 +397,7 @@ export function Attendance() {
           academiaId: destino.academiaId,
           sessionId: destino.sessionId,
           eventId: destino.eventId,
+          claseId: destino.claseId,
         },
       });
       setResultados((prev) => [resultado, ...prev].slice(0, 12));

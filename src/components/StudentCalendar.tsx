@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
-import { CalendarDays, ChevronLeft, ChevronRight, Clock, Info, MapPin } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, Clock, Info, MapPin, Users } from 'lucide-react';
 import { useStore } from '../store';
 import type { Student } from '../types';
 import { clasesDelDia, diasConClase, type ClaseProgramada } from '../lib/clases';
 import { estiloCategoria, hoyStr } from '../lib/planes';
+import { ESTILO_ESTADO, ETIQUETA_ESTADO, nombresDeProfesores } from '../lib/recurrencia';
 import { cn, formatTime, parseLocalDate } from '../lib/utils';
 
 /**
@@ -60,7 +61,15 @@ function celdasDelMes(fecha: string): (string | null)[] {
 }
 
 function TarjetaClase({ clase }: { clase: ClaseProgramada }) {
+  const { data } = useStore();
   const estilo = estiloCategoria(clase.categoria);
+  const profesores = nombresDeProfesores(clase.profesorIds, data.teachers);
+  // Sólo las clases de la programación traen estado y cupos; las demás fuentes
+  // no llevan esa información y esas líneas simplemente no aparecen.
+  const cupos =
+    clase.cupoMaximo && clase.cupoMaximo > 0
+      ? Math.max(0, clase.cupoMaximo - (clase.alumnoIds?.length || 0))
+      : null;
   return (
     <div
       className="card p-4 border-l-4"
@@ -81,6 +90,21 @@ function TarjetaClase({ clase }: { clase: ClaseProgramada }) {
           <MapPin className="w-3.5 h-3.5" /> {clase.lugar}
         </p>
       )}
+      {profesores && (
+        <p className="text-sm text-ink-muted flex items-center gap-1.5 mt-1">
+          <Users className="w-3.5 h-3.5" /> {profesores}
+        </p>
+      )}
+      {cupos !== null && (
+        <p className="text-xs text-ink-muted mt-1">
+          {cupos} de {clase.cupoMaximo} cupos disponibles
+        </p>
+      )}
+      {clase.estado && clase.estado !== 'cancelada' && (
+        <span className={cn('inline-block mt-2 text-[10px] font-bold px-2 py-0.5 rounded-full', ESTILO_ESTADO[clase.estado])}>
+          {ETIQUETA_ESTADO[clase.estado]}
+        </span>
+      )}
       {clase.cancelada && <p className="text-xs text-error mt-2 font-medium">Clase cancelada</p>}
     </div>
   );
@@ -100,9 +124,10 @@ export function StudentCalendar({ student }: { student: Student }) {
       academies: data.academies,
       sessions: data.sessions,
       events: data.events,
+      classOccurrences: data.classOccurrences,
       academyLogs: data.academyLogs,
     }),
-    [data.academies, data.sessions, data.events, data.academyLogs]
+    [data.academies, data.sessions, data.events, data.classOccurrences, data.academyLogs]
   );
 
   const celdas = useMemo(() => (vista === 'mes' ? celdasDelMes(ancla) : []), [vista, ancla]);

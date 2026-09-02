@@ -1,10 +1,26 @@
-import type { Academy, ClaseCategoria, ClaseOrigenTipo, DanceEvent, Session } from '../types';
-import { categoriaDeNivel, claseKeyAcademia, claseKeyEvento, claseKeySesion } from './planes';
+import type {
+  Academy,
+  ClaseCategoria,
+  ClaseEstado,
+  ClaseOrigenTipo,
+  ClassOccurrence,
+  DanceEvent,
+  Session,
+} from '../types';
+import {
+  categoriaDeNivel,
+  claseKeyAcademia,
+  claseKeyEvento,
+  claseKeyProgramada,
+  claseKeySesion,
+} from './planes';
+import { categoriaDeNivelClase, estadoDeClase } from './recurrencia';
 
 /**
- * Clases programadas de un día, unificando las tres fuentes de la agenda:
- * las clases regulares de una academia (que se repiten por día de la semana y
- * no tienen fila propia), las sesiones sueltas y los eventos.
+ * Clases programadas de un día, unificando las fuentes de la agenda: las clases
+ * de la programación recurrente (que sí tienen fila por fecha), las clases
+ * regulares de una academia (que se derivan de sus días de la semana y no
+ * tienen fila propia), las sesiones sueltas y los eventos.
  *
  * Lo usan el registro de asistencia del administrador y el calendario del
  * alumno, así que ambos ven exactamente la misma programación.
@@ -23,6 +39,18 @@ export interface ClaseProgramada {
   academiaId?: string;
   sessionId?: string;
   eventId?: string;
+  /** Clase de la programación recurrente, con fila propia en la base. */
+  claseId?: string;
+  /** Serie a la que pertenece, si salió de una recurrencia. */
+  serieId?: string;
+  /** true cuando esa fecha se editó por separado del resto de la serie. */
+  esExcepcion?: boolean;
+  nivel?: string;
+  profesorIds?: string[];
+  /** 0 o sin valor significa que la clase no tiene tope de alumnos. */
+  cupoMaximo?: number;
+  /** Estado ya resuelto contra el reloj: programada, en curso, finalizada… */
+  estado?: ClaseEstado;
   /** Alumnos ya asociados a la clase, para la lista del registro manual. */
   alumnoIds?: string[];
   cancelada?: boolean;
@@ -34,6 +62,8 @@ export interface FuentesDeClases {
   academies: Academy[];
   sessions: Session[];
   events: DanceEvent[];
+  /** Clases de la programación: únicas y las generadas por cada serie. */
+  classOccurrences?: ClassOccurrence[];
   academyLogs?: Record<string, 'dictada' | 'cancelada'>;
 }
 
@@ -75,6 +105,30 @@ export function clasesDeAcademia(
   };
 }
 
+/** Clase de la programación → clase de la agenda, con su estado resuelto. */
+export function claseProgramadaDeOcurrencia(clase: ClassOccurrence): ClaseProgramada {
+  return {
+    key: claseKeyProgramada(clase.id),
+    tipo: 'programada',
+    titulo: clase.nombre,
+    fecha: clase.fecha,
+    hora: clase.horaInicio,
+    duracion: clase.duracion,
+    lugar: [clase.sede, clase.salon].filter(Boolean).join(' · '),
+    categoria: categoriaDeNivelClase(clase.nivel),
+    academiaId: clase.academiaId || undefined,
+    claseId: clase.id,
+    serieId: clase.serieId || undefined,
+    esExcepcion: clase.esExcepcion,
+    nivel: clase.nivel,
+    profesorIds: clase.profesorIds || [],
+    cupoMaximo: clase.cupoMaximo,
+    estado: estadoDeClase(clase),
+    alumnoIds: clase.alumnoIds || [],
+    cancelada: clase.estado === 'cancelada',
+  };
+}
+
 /**
  * Todas las clases de un día, ordenadas por hora.
  *
@@ -89,6 +143,14 @@ export function clasesDelDia(
   const logs = fuentes.academyLogs || {};
   const soloDe = filtro.academiaId;
   const clases: ClaseProgramada[] = [];
+
+  // Las clases de la programación se guardan una por fecha, así que basta con
+  // filtrar por fecha; incluidas las canceladas, que siguen en el historial.
+  for (const clase of fuentes.classOccurrences || []) {
+    if (clase.fecha !== fecha) continue;
+    if (soloDe && clase.academiaId !== soloDe) continue;
+    clases.push(claseProgramadaDeOcurrencia(clase));
+  }
 
   for (const academy of fuentes.academies) {
     if (soloDe && academy.id !== soloDe) continue;

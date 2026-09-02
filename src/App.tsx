@@ -13,6 +13,7 @@ import { Attendance } from './components/Attendance';
 import { Settings } from './components/Settings';
 import { UsersManager } from './components/UsersManager';
 import { EventsManager } from './components/EventsManager';
+import { ClassScheduler } from './components/ClassScheduler';
 import { Login } from './components/Login';
 import { ForcePasswordChange } from './components/ForcePasswordChange';
 import { StudentPortal } from './components/StudentPortal';
@@ -103,6 +104,7 @@ function AppContent() {
             {currentTab === 'usuarios' && <UsersManager />}
             {currentTab === 'profesores' && <Teachers />}
             {currentTab === 'eventos' && <EventsManager />}
+            {currentTab === 'programacion' && <ClassScheduler />}
             {currentTab === 'planes' && <Plans />}
             {currentTab === 'asistencia' && <Attendance />}
             {currentTab === 'contratos' && <Gigs />}

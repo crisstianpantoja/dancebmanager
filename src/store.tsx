@@ -35,6 +35,13 @@ export interface AppData {
    * sólo el administrador las escribe, a través de /api/asistencia.
    */
   attendanceRecords: import('./types').AttendanceRecord[];
+  /**
+   * Programación recurrente y las clases que genera. Igual que la asistencia:
+   * se leen desde la base pero se escriben sólo por /api/clases, así que no
+   * viajan nunca en el payload de un guardado (ver `updateData`).
+   */
+  classSeries: import('./types').ClassSeries[];
+  classOccurrences: import('./types').ClassOccurrence[];
   settings: import('./types').AppSettings;
 }
 
@@ -57,6 +64,14 @@ interface StoreContextType {
   saving: boolean;
   /** Vuelve a leer todo desde la base de datos. */
   refresh: () => Promise<void>;
+  /**
+   * Deja en el estado la programación que devolvió /api/clases. No guarda nada:
+   * la escritura ya la hizo el servidor, esto sólo refresca la pantalla.
+   */
+  applyProgramacion: (
+    series: import('./types').ClassSeries[],
+    clases: import('./types').ClassOccurrence[]
+  ) => void;
   currentUser: { id: string, rol: AppRole } | null;
   /** true mientras la persona tenga una contraseña temporal sin cambiar. */
   mustChangePassword: boolean;
@@ -83,6 +98,8 @@ const defaultData: AppData = {
   plans: [],
   events: [],
   attendanceRecords: [],
+  classSeries: [],
+  classOccurrences: [],
   settings: {
     showLoginLogo: false
   },
@@ -266,6 +283,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     await loadAuthenticatedData();
   }, [loadAuthenticatedData]);
 
+  const applyProgramacion = useCallback(
+    (
+      series: import('./types').ClassSeries[],
+      clases: import('./types').ClassOccurrence[]
+    ) => {
+      setData(prev => ({ ...prev, classSeries: series, classOccurrences: clases }));
+    },
+    []
+  );
+
   const clearPasswordChangeFlag = useCallback(() => {
     setSession(prev => {
       if (!prev) return prev;
@@ -285,6 +312,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     // Cada colección enviada reemplaza a la almacenada, así que los ajustes
     // viajan completos aunque la pantalla sólo haya cambiado un campo.
     const payload: Partial<AppData> = { ...newData };
+    // Colecciones que sólo escribe el servidor. El backend las ignora de todos
+    // modos; no enviarlas evita que un guardado grande cargue con ellas.
+    delete payload.attendanceRecords;
+    delete payload.classSeries;
+    delete payload.classOccurrences;
     if (newData.settings) {
       payload.settings = { ...dataRef.current.settings, ...newData.settings };
     }
@@ -335,6 +367,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       loading,
       saving,
       refresh,
+      applyProgramacion,
       currentUser,
       mustChangePassword: session?.user.mustChangePassword === true,
       signIn,

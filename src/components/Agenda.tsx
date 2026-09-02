@@ -1,8 +1,15 @@
 import React, { useState } from 'react';
 import { useStore } from '../store';
 import { ChevronLeft, ChevronRight, Music, Calendar as CalendarIcon } from 'lucide-react';
-import { cn, formatCurrency } from '../lib/utils';
+import { cn, formatCurrency, formatTime } from '../lib/utils';
 import { Gig, DanceEvent } from '../types';
+import {
+  ESTILO_ESTADO,
+  ETIQUETA_ESTADO,
+  describirCupos,
+  estadoDeClase,
+  nombresDeProfesores,
+} from '../lib/recurrencia';
 
 export function Agenda() {
   const { data } = useStore();
@@ -29,7 +36,12 @@ export function Agenda() {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     const gigs = data.gigs.filter(g => g.fecha === dateStr);
     const events = data.events.filter(e => e.date === dateStr);
-    return { gigs, events };
+    // Las clases de la programación (únicas y recurrentes) ya vienen una por
+    // fecha, así que aparecen aquí solas, sin volver a aplicar la recurrencia.
+    const clases = (data.classOccurrences || [])
+      .filter(c => c.fecha === dateStr)
+      .sort((a, b) => a.horaInicio.localeCompare(b.horaInicio));
+    return { gigs, events, clases };
   };
 
   return (
@@ -40,7 +52,7 @@ export function Agenda() {
             <CalendarIcon className="w-8 h-8 text-magenta" />
             Agenda
           </h1>
-          <p className="text-ink-muted mt-1">Calendario de contratos y eventos</p>
+          <p className="text-ink-muted mt-1">Calendario de clases, contratos y eventos</p>
         </div>
       </div>
 
@@ -65,7 +77,7 @@ export function Agenda() {
           ))}
           
           {days.map(day => {
-            const { gigs, events } = getEventsForDay(day);
+            const { gigs, events, clases } = getEventsForDay(day);
             const isToday = new Date().getDate() === day && new Date().getMonth() === month && new Date().getFullYear() === year;
             
             return (
@@ -74,7 +86,38 @@ export function Agenda() {
                   {day}
                 </span>
                 
-                <div className="space-y-1 overflow-y-auto max-h-[120px] scrollbar-hide">
+                <div className="space-y-1 overflow-y-auto max-h-[180px] scrollbar-hide">
+                  {clases.map(c => {
+                    const estado = estadoDeClase(c);
+                    const profesores = nombresDeProfesores(c.profesorIds, data.teachers);
+                    const lugar = [c.sede, c.salon].filter(Boolean).join(' · ');
+                    return (
+                      <div
+                        key={c.id}
+                        className={cn(
+                          'text-xs p-1.5 rounded border',
+                          c.estado === 'cancelada'
+                            ? 'bg-error/10 border-error/25 text-ink-muted'
+                            : 'bg-magenta/10 border-magenta/25 text-ink'
+                        )}
+                        title={`${c.nombre} · ${c.nivel} · ${c.horaInicio}${c.horaFin ? `-${c.horaFin}` : ''}${profesores ? ` · ${profesores}` : ''}${lugar ? ` · ${lugar}` : ''} · ${describirCupos(c)} · ${ETIQUETA_ESTADO[estado]}`}
+                      >
+                        <div className={cn('font-semibold truncate', c.estado === 'cancelada' && 'line-through')}>
+                          {c.nombre}
+                        </div>
+                        <div className="text-[10px] opacity-80">
+                          {formatTime(c.horaInicio)}
+                          {c.horaFin ? ` – ${formatTime(c.horaFin)}` : ''} · {c.nivel}
+                        </div>
+                        {profesores && <div className="text-[10px] opacity-70 truncate">{profesores}</div>}
+                        {lugar && <div className="text-[10px] opacity-70 truncate">{lugar}</div>}
+                        <div className="text-[10px] opacity-70">{describirCupos(c)}</div>
+                        <span className={cn('inline-block mt-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full', ESTILO_ESTADO[estado])}>
+                          {ETIQUETA_ESTADO[estado]}
+                        </span>
+                      </div>
+                    );
+                  })}
                   {gigs.map(g => (
                     <div key={g.id} className="text-xs p-1.5 rounded bg-accent-dj/10 border border-accent-dj/20 text-accent-dj cursor-pointer hover:bg-accent-dj/20 transition-colors" title={`${g.evento} - ${g.hora}`}>
                       <div className="font-semibold truncate">{g.evento}</div>

@@ -185,7 +185,14 @@ export interface PlanTemplate {
  * 'Privada' no aparece en la agenda de grupo: la usan las clases uno a uno,
  * que se registran a mano en el momento en que ocurren.
  */
-export type ClaseCategoria = 'Básica' | 'Intermedia' | 'Avanzada' | 'Privada' | 'Evento' | 'Taller';
+export type ClaseCategoria =
+  | 'Básica'
+  | 'Intermedia'
+  | 'Avanzada'
+  | 'Grupo'
+  | 'Privada'
+  | 'Evento'
+  | 'Taller';
 
 export interface Expense {
   id: string;
@@ -260,7 +267,7 @@ export type AsistenciaEstadoPlan = 'cupo' | 'ilimitada' | 'sin_cupo' | 'vencido'
  * momento —una privada, o una de academia que no estaba programada— y que por
  * tanto no tiene ninguna fila de la agenda detrás.
  */
-export type ClaseOrigenTipo = 'academia' | 'sesion' | 'evento' | 'manual';
+export type ClaseOrigenTipo = 'academia' | 'sesion' | 'evento' | 'programada' | 'manual';
 
 /**
  * Registro de una clase tomada. Sólo el administrador los crea y los anula, y
@@ -276,6 +283,8 @@ export interface AttendanceRecord {
   academiaId?: string;
   sessionId?: string;
   eventId?: string;
+  /** Clase de la programación recurrente, cuando la asistencia salió de ahí. */
+  claseId?: string;
   fecha: string; // YYYY-MM-DD
   hora: string;  // HH:mm
   categoria?: ClaseCategoria;
@@ -311,4 +320,105 @@ export interface AppSettings {
   surfaceColor?: string;
   textColor?: string;
   brandName?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Programación de clases (únicas y recurrentes)
+// ---------------------------------------------------------------------------
+
+/**
+ * Nivel de una clase programada. La lista cubre los niveles de la academia,
+ * pero el campo acepta cualquier texto para que se puedan nombrar otros.
+ */
+export type ClaseNivel = 'Básico' | 'Intermedio' | 'Avanzado' | 'Grupo' | string;
+
+/**
+ * Cada cuánto se repite una serie.
+ *  - 'semanal'        : todas las semanas.
+ *  - 'cada_2_semanas' : una semana sí, una no.
+ *  - 'personalizada'  : cada `intervaloSemanas` semanas.
+ */
+export type Frecuencia = 'semanal' | 'cada_2_semanas' | 'personalizada';
+
+/** Estado guardado de una clase. Los otros dos estados se derivan del reloj. */
+export type ClaseEstadoGuardado = 'programada' | 'cancelada';
+
+/**
+ * Estado con el que se muestra una clase en el calendario. 'en_curso' y
+ * 'finalizada' no se guardan: se calculan con la fecha y la hora de la clase
+ * (ver `estadoDeClase()` en src/lib/recurrencia.ts).
+ */
+export type ClaseEstado = 'programada' | 'en_curso' | 'finalizada' | 'cancelada';
+
+/**
+ * A qué clases aplica una edición o una cancelación dentro de una serie. Es lo
+ * que responde el administrador al «¿Qué deseas modificar?».
+ */
+export type AlcanceCambio = 'solo_esta' | 'esta_y_siguientes' | 'toda_serie';
+
+/** Regla de repetición de una serie. */
+export interface ReglaRecurrencia {
+  /** Días de la semana en que se repite. 0=Dom … 6=Sáb. */
+  diasSemana: number[];
+  /** Primera fecha en que puede ocurrir (YYYY-MM-DD). */
+  fechaInicio: string;
+  /** Última fecha en que puede ocurrir (YYYY-MM-DD), inclusive. */
+  fechaFin: string;
+  frecuencia: Frecuencia;
+  /** Semanas entre repeticiones. Sólo se consulta en 'personalizada'. */
+  intervaloSemanas?: number;
+}
+
+/**
+ * Programación recurrente. Guarda la regla; las clases concretas viven en
+ * `ClassOccurrence`, una por fecha, y se generan al guardar la serie.
+ */
+export interface ClassSeries extends ReglaRecurrencia {
+  id: string;
+  nombre: string;
+  nivel: ClaseNivel;
+  /** Profesores a cargo. */
+  profesorIds: string[];
+  horaInicio: string; // HH:mm
+  horaFin: string;    // HH:mm
+  duracion: number;   // minutos
+  sede: string;
+  salon: string;
+  /** 0 = sin límite de alumnos. */
+  cupoMaximo: number;
+  academiaId?: string;
+  /** Alumnos matriculados en la serie; cada clase generada los hereda. */
+  alumnoIds: string[];
+  color: string;
+  notas: string;
+  estado: 'activa' | 'cancelada';
+  /** Serie de la que se desprendió al cortar con «esta clase y las siguientes». */
+  serieOrigenId?: string;
+  creadoEn: string;
+}
+
+/** Una clase concreta del calendario. Sin `serieId` es una clase única. */
+export interface ClassOccurrence {
+  id: string;
+  serieId?: string;
+  fecha: string;      // YYYY-MM-DD
+  horaInicio: string; // HH:mm
+  horaFin: string;    // HH:mm
+  duracion: number;
+  nombre: string;
+  nivel: ClaseNivel;
+  profesorIds: string[];
+  sede: string;
+  salon: string;
+  cupoMaximo: number;
+  alumnoIds: string[];
+  academiaId?: string;
+  notas: string;
+  estado: ClaseEstadoGuardado;
+  /** true cuando esta fecha se editó aparte: la serie ya no la sobrescribe. */
+  esExcepcion: boolean;
+  motivoCancelacion?: string;
+  canceladaEn?: string;
+  canceladaPor?: string;
+  creadoEn: string;
 }
