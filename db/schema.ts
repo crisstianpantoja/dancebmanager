@@ -232,6 +232,8 @@ export const attendanceRecords = pgTable('attendance_records', {
   academiaId: text('academia_id'),
   sessionId: text('session_id'),
   eventId: text('event_id'),
+  /** Clase de la programación recurrente, cuando la asistencia salió de ahí. */
+  claseId: text('clase_id'),
   fecha: text().notNull().default(''),
   hora: text().notNull().default(''),
   categoria: text(),
@@ -301,4 +303,89 @@ export const passwordResetRequests = pgTable('password_reset_requests', {
 export const authConfig = pgTable('auth_config', {
   id: integer().primaryKey().default(1),
   secret: text().notNull(),
+});
+
+/**
+ * Programación recurrente de clases.
+ *
+ * Una serie guarda **la regla** (día de la semana, hora, frecuencia y el rango
+ * de fechas en que está activa); las clases concretas se materializan en
+ * `class_occurrences`, una fila por fecha. Se generan al guardar la serie en
+ * lugar de derivarse al leer, que es lo que hacen las clases de `academies`,
+ * porque una fecha suelta tiene que poder cambiar de hora, de salón o quedar
+ * cancelada sin arrastrar a las demás.
+ *
+ * Sólo el administrador las escribe, y únicamente a través de `/api/clases`:
+ * ninguna de las dos tablas está en LIST_COLLECTIONS (ver db/mapping.ts), así
+ * que un guardado del cliente no las alcanza ni enviándolas en el payload.
+ */
+export const classSeries = pgTable('class_series', {
+  id: text().primaryKey(),
+  nombre: text().notNull().default(''),
+  /** 'Básico' | 'Intermedio' | 'Avanzado' | 'Grupo' | texto libre. */
+  nivel: text().notNull().default('Básico'),
+  profesorIds: jsonb('profesor_ids').$type<string[]>().default([]),
+  /** 0=Dom … 6=Sáb. Una serie puede repetirse en más de un día. */
+  diasSemana: jsonb('dias_semana').$type<number[]>().default([]),
+  horaInicio: text('hora_inicio').notNull().default(''),
+  horaFin: text('hora_fin').notNull().default(''),
+  duracion: integer().notNull().default(60),
+  sede: text().notNull().default(''),
+  salon: text().notNull().default(''),
+  /** 0 = sin límite de alumnos. */
+  cupoMaximo: integer('cupo_maximo').notNull().default(0),
+  fechaInicio: text('fecha_inicio').notNull().default(''),
+  fechaFin: text('fecha_fin').notNull().default(''),
+  /** 'semanal' | 'cada_2_semanas' | 'personalizada'. */
+  frecuencia: text().notNull().default('semanal'),
+  /** Semanas entre repeticiones. Sólo se consulta en 'personalizada'. */
+  intervaloSemanas: integer('intervalo_semanas').notNull().default(1),
+  academiaId: text('academia_id'),
+  /** Alumnos matriculados en la serie; cada clase nueva los hereda. */
+  alumnoIds: jsonb('alumno_ids').$type<string[]>().default([]),
+  color: text().notNull().default('#F72585'),
+  notas: text().notNull().default(''),
+  /** 'activa' | 'cancelada'. */
+  estado: text().notNull().default('activa'),
+  /** Serie de la que se desprendió al cortar con «esta clase y las siguientes». */
+  serieOrigenId: text('serie_origen_id'),
+  creadoEn: text('creado_en').notNull().default(''),
+});
+
+/**
+ * Una clase concreta del calendario. `serieId` en null es una clase única.
+ *
+ * Los datos van copiados de la serie en lugar de leerse a través de ella: así
+ * una excepción (`esExcepcion`) es simplemente una fila con valores distintos,
+ * y el calendario se pinta sin resolver herencia.
+ *
+ * `estado` sólo guarda 'programada' o 'cancelada'. «En curso» y «Finalizada»
+ * se derivan de la fecha y la hora al mostrarlas (ver `estadoDeClase()` en
+ * src/lib/recurrencia.ts), para que no dependan de que algo corra a diario.
+ */
+export const classOccurrences = pgTable('class_occurrences', {
+  id: text().primaryKey(),
+  /** null en una clase única, sin recurrencia detrás. */
+  serieId: text('serie_id'),
+  fecha: text().notNull().default(''),
+  horaInicio: text('hora_inicio').notNull().default(''),
+  horaFin: text('hora_fin').notNull().default(''),
+  duracion: integer().notNull().default(60),
+  nombre: text().notNull().default(''),
+  nivel: text().notNull().default('Básico'),
+  profesorIds: jsonb('profesor_ids').$type<string[]>().default([]),
+  sede: text().notNull().default(''),
+  salon: text().notNull().default(''),
+  cupoMaximo: integer('cupo_maximo').notNull().default(0),
+  alumnoIds: jsonb('alumno_ids').$type<string[]>().default([]),
+  academiaId: text('academia_id'),
+  notas: text().notNull().default(''),
+  /** 'programada' | 'cancelada'. */
+  estado: text().notNull().default('programada'),
+  /** true cuando esta fecha se editó aparte: una edición de la serie no la pisa. */
+  esExcepcion: boolean('es_excepcion').notNull().default(false),
+  motivoCancelacion: text('motivo_cancelacion'),
+  canceladaEn: text('cancelada_en'),
+  canceladaPor: text('cancelada_por'),
+  creadoEn: text('creado_en').notNull().default(''),
 });

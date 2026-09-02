@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Home, Users, UserCircle, Building2, Calendar, CreditCard, Music, Menu, LogOut, Ticket, Settings, Shield, Tag, QrCode, X } from 'lucide-react';
+import { Home, Users, UserCircle, Building2, Calendar, CalendarRange, CreditCard, Music, Menu, LogOut, Ticket, Settings, Shield, Tag, QrCode, X } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useStore } from '../store';
 import { DeleteButton } from './DeleteButton';
@@ -20,6 +20,7 @@ export function Sidebar({ currentTab, setCurrentTab }: SidebarProps) {
     { id: 'usuarios', label: 'Usuarios', icon: Shield },
     { id: 'profesores', label: 'Profesores', icon: UserCircle },
     { id: 'eventos', label: 'Eventos y Clases', icon: Ticket },
+    { id: 'programacion', label: 'Programación', icon: CalendarRange },
     { id: 'planes', label: 'Planes y Membresías', icon: Tag },
     { id: 'asistencia', label: 'Asistencia', icon: QrCode },
     { id: 'contratos', label: 'Contratos', icon: Music },

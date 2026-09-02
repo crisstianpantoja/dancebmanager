@@ -8,6 +8,7 @@ import { handleDataRequest } from './db/api.js';
 import { handleAuthRequest } from './db/authApi.js';
 import { handleAttendanceRequest } from './db/attendance.js';
 import { handlePagosRequest } from './db/pagos.js';
+import { handleClasesRequest } from './db/clases.js';
 
 dotenv.config();
 
@@ -73,6 +74,7 @@ async function startServer() {
   app.all('/api/auth', bridge(handleAuthRequest, '/api/auth'));
   app.all('/api/asistencia', bridge(handleAttendanceRequest, '/api/asistencia'));
   app.all('/api/pagos', bridge(handlePagosRequest, '/api/pagos'));
+  app.all('/api/clases', bridge(handleClasesRequest, '/api/clases'));
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== 'production') {

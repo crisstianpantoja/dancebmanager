@@ -1,16 +1,21 @@
 import type { AppData } from '../store';
 import type {
+  AlcanceCambio,
   AttendanceRecord,
   ClaseCategoria,
   ClaseOrigenTipo,
+  ClassOccurrence,
+  ClassSeries,
   PasswordResetRequest,
   Payment,
+  ReglaRecurrencia,
 } from '../types';
 
 const DATA_ENDPOINT = '/api/data';
 const AUTH_ENDPOINT = '/api/auth';
 const ATTENDANCE_ENDPOINT = '/api/asistencia';
 const PAGOS_ENDPOINT = '/api/pagos';
+const CLASES_ENDPOINT = '/api/clases';
 
 export interface LoadResult {
   data: Partial<AppData>;
@@ -203,6 +208,8 @@ export interface RegistroAsistencia {
 }
 
 export interface ClaseParaRegistro {
+  /** Clase de la programación recurrente, cuando la asistencia sale de ahí. */
+  claseId?: string;
   /**
    * Identidad de la clase. Obligatoria para las clases de la agenda; en una
    * clase manual se puede omitir y el servidor la arma con alumno, fecha y hora.
@@ -296,4 +303,106 @@ export function apiRevisarPago(input: {
   nota?: string;
 }) {
   return pagosRequest<ResultadoComprobante>({ action: 'review', ...input });
+}
+
+// ---------------------------------------------------------------------------
+// Programación de clases
+// ---------------------------------------------------------------------------
+
+/**
+ * Toda respuesta de /api/clases devuelve la programación completa después de
+ * escribir, porque un cambio de serie toca muchas filas a la vez y el cliente
+ * no puede adivinar cuáles. Se aplica tal cual con `applyProgramacion`.
+ */
+export interface ResultadoProgramacion {
+  ok: true;
+  /** Aviso ya redactado por el servidor, listo para el toast. */
+  mensaje?: string;
+  classSeries: ClassSeries[];
+  classOccurrences: ClassOccurrence[];
+}
+
+/** Campos de una clase que se pueden cambiar desde la pantalla. */
+export interface CambiosDeClase {
+  nombre?: string;
+  nivel?: string;
+  profesorIds?: string[];
+  horaInicio?: string;
+  horaFin?: string;
+  duracion?: number;
+  sede?: string;
+  salon?: string;
+  cupoMaximo?: number;
+  academiaId?: string | null;
+  alumnoIds?: string[];
+  notas?: string;
+  /** Sólo tienen efecto con alcance 'toda_serie' o 'esta_y_siguientes'. */
+  diasSemana?: number[];
+  fechaInicio?: string;
+  fechaFin?: string;
+  frecuencia?: ReglaRecurrencia['frecuencia'];
+  intervaloSemanas?: number;
+  /** Mueve una clase concreta de fecha (una excepción de la serie). */
+  fecha?: string;
+}
+
+function clasesRequest<T>(payload: Record<string, unknown>): Promise<T> {
+  return request<T>(CLASES_ENDPOINT, {
+    method: 'POST',
+    headers: headers({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+}
+
+/** Datos con los que se crea una serie o una clase única. */
+export interface DatosDeClase extends CambiosDeClase {
+  nombre: string;
+  horaInicio: string;
+}
+
+/** Crea la serie y genera de una vez todas las clases del periodo. */
+export function apiCrearSerie(serie: DatosDeClase & ReglaRecurrencia) {
+  return clasesRequest<ResultadoProgramacion>({ action: 'create-series', ...serie });
+}
+
+/** Crea una clase única, sin recurrencia. */
+export function apiCrearClaseUnica(clase: DatosDeClase & { fecha: string }) {
+  return clasesRequest<ResultadoProgramacion>({ action: 'create-single', ...clase });
+}
+
+/**
+ * Edita una clase. El alcance decide a qué llega el cambio: sólo a esa fecha
+ * (queda como excepción de la serie), a esa y las siguientes (parte la serie en
+ * dos) o a toda la serie.
+ */
+export function apiEditarClase(input: {
+  claseId: string;
+  alcance: AlcanceCambio;
+  cambios: CambiosDeClase;
+}) {
+  return clasesRequest<ResultadoProgramacion>({ action: 'update-occurrence', ...input });
+}
+
+/** Cancela sin borrar: la clase queda en el historial como «Cancelada». */
+export function apiCancelarClase(input: {
+  claseId: string;
+  alcance: AlcanceCambio;
+  motivo?: string;
+}) {
+  return clasesRequest<ResultadoProgramacion>({ action: 'cancel-occurrence', ...input });
+}
+
+/** Deshace una cancelación y devuelve la clase a «Programada». */
+export function apiReprogramarClase(claseId: string) {
+  return clasesRequest<ResultadoProgramacion>({ action: 'restore-occurrence', claseId });
+}
+
+/** Elimina la serie entera. El servidor lo rechaza si ya hubo asistencia. */
+export function apiEliminarSerie(serieId: string) {
+  return clasesRequest<ResultadoProgramacion>({ action: 'delete-series', serieId });
+}
+
+/** Elimina una clase suelta. El servidor lo rechaza si ya hubo asistencia. */
+export function apiEliminarClase(claseId: string) {
+  return clasesRequest<ResultadoProgramacion>({ action: 'delete-occurrence', claseId });
 }

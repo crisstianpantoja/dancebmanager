@@ -1,0 +1,50 @@
+CREATE TABLE "class_occurrences" (
+	"id" text PRIMARY KEY,
+	"serie_id" text,
+	"fecha" text DEFAULT '' NOT NULL,
+	"hora_inicio" text DEFAULT '' NOT NULL,
+	"hora_fin" text DEFAULT '' NOT NULL,
+	"duracion" integer DEFAULT 60 NOT NULL,
+	"nombre" text DEFAULT '' NOT NULL,
+	"nivel" text DEFAULT 'Básico' NOT NULL,
+	"profesor_ids" jsonb DEFAULT '[]',
+	"sede" text DEFAULT '' NOT NULL,
+	"salon" text DEFAULT '' NOT NULL,
+	"cupo_maximo" integer DEFAULT 0 NOT NULL,
+	"alumno_ids" jsonb DEFAULT '[]',
+	"academia_id" text,
+	"notas" text DEFAULT '' NOT NULL,
+	"estado" text DEFAULT 'programada' NOT NULL,
+	"es_excepcion" boolean DEFAULT false NOT NULL,
+	"motivo_cancelacion" text,
+	"cancelada_en" text,
+	"cancelada_por" text,
+	"creado_en" text DEFAULT '' NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "class_series" (
+	"id" text PRIMARY KEY,
+	"nombre" text DEFAULT '' NOT NULL,
+	"nivel" text DEFAULT 'Básico' NOT NULL,
+	"profesor_ids" jsonb DEFAULT '[]',
+	"dias_semana" jsonb DEFAULT '[]',
+	"hora_inicio" text DEFAULT '' NOT NULL,
+	"hora_fin" text DEFAULT '' NOT NULL,
+	"duracion" integer DEFAULT 60 NOT NULL,
+	"sede" text DEFAULT '' NOT NULL,
+	"salon" text DEFAULT '' NOT NULL,
+	"cupo_maximo" integer DEFAULT 0 NOT NULL,
+	"fecha_inicio" text DEFAULT '' NOT NULL,
+	"fecha_fin" text DEFAULT '' NOT NULL,
+	"frecuencia" text DEFAULT 'semanal' NOT NULL,
+	"intervalo_semanas" integer DEFAULT 1 NOT NULL,
+	"academia_id" text,
+	"alumno_ids" jsonb DEFAULT '[]',
+	"color" text DEFAULT '#F72585' NOT NULL,
+	"notas" text DEFAULT '' NOT NULL,
+	"estado" text DEFAULT 'activa' NOT NULL,
+	"serie_origen_id" text,
+	"creado_en" text DEFAULT '' NOT NULL
+);
+--> statement-breakpoint
+ALTER TABLE "attendance_records" ADD COLUMN "clase_id" text;

@@ -4,6 +4,8 @@ import {
   academyLogs,
   academyPayments,
   attendanceRecords,
+  classOccurrences,
+  classSeries,
   events,
   expenses,
   gigs,
@@ -50,6 +52,10 @@ import {
  * escribe en db/attendance.ts, que exige administrador. `attendance_records`
  * no está en LIST_COLLECTIONS, así que ninguna escritura del cliente la alcanza
  * ni siquiera enviándola en el payload.
+ *
+ * La programación de clases (`class_series` y `class_occurrences`) funciona
+ * igual: se lee desde aquí y se escribe únicamente en db/clases.ts, que también
+ * exige administrador.
  */
 
 /** Columnas que nunca cruzan la frontera del servidor. */
@@ -151,6 +157,8 @@ export async function readAll(): Promise<ReadResult> {
     notificationRows,
     academyLogRows,
     attendanceRows,
+    seriesRows,
+    occurrenceRows,
     settingsRows,
   ] = await Promise.all([
     db.select().from(teachers),
@@ -166,6 +174,8 @@ export async function readAll(): Promise<ReadResult> {
     db.select().from(notifications),
     db.select().from(academyLogs),
     db.select().from(attendanceRecords),
+    db.select().from(classSeries),
+    db.select().from(classOccurrences),
     db.select().from(settings),
   ]);
 
@@ -215,6 +225,10 @@ export async function readAll(): Promise<ReadResult> {
       events: clean(eventRows),
       notifications: clean(notificationRows).map((row) => fromRowShape('notifications', row)),
       attendanceRecords: clean(attendanceRows),
+      classSeries: clean(seriesRows),
+      classOccurrences: clean(occurrenceRows).sort((a, b) =>
+        `${a.fecha} ${a.horaInicio}`.localeCompare(`${b.fecha} ${b.horaInicio}`)
+      ),
       academyLogs: logs,
       settings: stripNulls(settingsRow),
     },
