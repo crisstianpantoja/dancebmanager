@@ -39,11 +39,14 @@ const RECIEN_VENCIDO_DIAS = 7;
 const TIPOS_DE_CLASE = ['academia', 'sesion', 'evento', 'programada', 'manual'];
 
 /**
- * Clases con varios alumnos en la misma hora. Un alumno de plan privado no
- * pertenece a ninguna de ellas; 'evento' queda fuera porque a un evento entra
- * cualquiera, y 'manual' es justamente por donde pasa la privada.
+ * Clases que por definición juntan a varios alumnos en la misma hora. Un
+ * alumno de plan privado no pertenece a ninguna de ellas; 'evento' queda fuera
+ * porque a un evento entra cualquiera, y 'manual' es justamente por donde pasa
+ * la privada. 'sesion' no está en la lista porque no se puede decidir por el
+ * tipo: una sesión es de grupo o uno a uno según su propia fila (ver
+ * `esClaseDeGrupo`).
  */
-const CLASES_DE_GRUPO = ['academia', 'sesion', 'programada'];
+const CLASES_DE_GRUPO = ['academia', 'programada'];
 
 /** Categorías reconocidas. Cualquier otra se guarda como nula. */
 const CATEGORIAS = ['Básica', 'Intermedia', 'Avanzada', 'Grupo', 'Privada', 'Evento', 'Taller'];
@@ -355,6 +358,28 @@ function leerClase(input: ClaseInput, alumnoId: string): {
   };
 }
 
+/**
+ * ¿La clase junta a varios alumnos en la misma hora?
+ *
+ * Una sesión puede ser de academia —grupo— o privada —uno a uno—, y la agenda
+ * entrega las dos como 'sesion' (ver clasesDelDia en src/lib/clases.ts), así
+ * que el tipo de la clase no alcanza: hay que mirar la fila de la sesión. Una
+ * sesión que ya no existe se trata como de grupo, que es el lado prudente para
+ * un `sessionId` que no corresponde a nada.
+ */
+async function esClaseDeGrupo(clase: { claseTipo: string; sessionId: string | null }): Promise<boolean> {
+  if (CLASES_DE_GRUPO.includes(clase.claseTipo)) return true;
+  if (clase.claseTipo !== 'sesion') return false;
+  if (!clase.sessionId) return true;
+
+  const [sesion] = (await db
+    .select({ tipo: sessions.tipo })
+    .from(sessions)
+    .where(eq(sessions.id, clase.sessionId))) as { tipo: string }[];
+
+  return !sesion || sesion.tipo !== 'privada';
+}
+
 export async function registrarAsistencia(
   claims: SessionClaims,
   body: AnyRecord
@@ -377,9 +402,10 @@ export async function registrarAsistencia(
   if (!alumno) throw new AuthError('El carnet no corresponde a ningún alumno registrado', 404);
 
   // Red de seguridad del servidor: el carnet de un alumno de plan privado no
-  // puede quedar pegado a la clase de grupo que esté abierta en pantalla. Los
-  // eventos sí admiten a cualquiera, privadas incluidas.
-  if (alumno.tipo === 'privada' && CLASES_DE_GRUPO.includes(clase.claseTipo)) {
+  // puede quedar pegado a la clase de grupo que esté abierta en pantalla. Lo
+  // que sí se registra con normalidad es un evento —abierto a cualquiera— y su
+  // propia clase privada de la agenda, que es uno a uno igual que la manual.
+  if (alumno.tipo === 'privada' && (await esClaseDeGrupo(clase))) {
     throw new AuthError(
       `${alumno.nombre || 'El alumno'} tiene plan privado: su asistencia se registra como clase privada, no contra una clase de grupo.`,
       409

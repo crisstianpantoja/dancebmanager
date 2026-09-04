@@ -38,6 +38,12 @@ export interface ClaseProgramada {
   categoria: ClaseCategoria;
   academiaId?: string;
   sessionId?: string;
+  /**
+   * Tipo de la sesión de la que salió: 'academia' es de grupo y 'privada' es
+   * uno a uno. La agenda entrega ambas como `tipo: 'sesion'`, así que sin esto
+   * no hay forma de distinguirlas.
+   */
+  sesionTipo?: Session['tipo'];
   eventId?: string;
   /** Clase de la programación recurrente, con fila propia en la base. */
   claseId?: string;
@@ -175,6 +181,7 @@ export function clasesDelDia(
       categoria: session.categoria || (session.tipo === 'academia' ? 'Básica' : 'Intermedia'),
       academiaId: session.academiaId,
       sessionId: session.id,
+      sesionTipo: session.tipo,
       alumnoIds: session.alumnoIds,
     });
   }
@@ -197,6 +204,32 @@ export function clasesDelDia(
   }
 
   return clases.sort((a, b) => a.hora.localeCompare(b.hora));
+}
+
+/**
+ * Alumnos de una sesión: los matriculados más los que asistieron sin estarlo.
+ *
+ * Registrar una asistencia no matricula a nadie —`alumnoIds` es el roster que
+ * se define al crear la clase, ver db/attendance.ts—, así que mirar sólo el
+ * roster dejaría fuera a quien llegó suelto y su «presente» no se vería en
+ * ninguna parte.
+ */
+export function alumnosDeSesion(session: Session): string[] {
+  return [...new Set([...(session.alumnoIds || []), ...Object.keys(session.asistencia || {})])];
+}
+
+/**
+ * ¿La clase junta a varios alumnos en la misma hora?
+ *
+ * El carnet de un alumno de plan privado no se registra contra ninguna de
+ * ellas: su clase es uno a uno. Un evento es abierto y admite a cualquiera, y
+ * una sesión privada ya es uno a uno, así que ambos quedan fuera. El servidor
+ * decide lo mismo por su cuenta en db/attendance.ts; esto sólo evita mandarle
+ * una petición que va a rechazar.
+ */
+export function esClaseDeGrupo(clase: ClaseProgramada): boolean {
+  if (clase.tipo === 'sesion') return clase.sesionTipo !== 'privada';
+  return clase.tipo === 'academia' || clase.tipo === 'programada';
 }
 
 /**

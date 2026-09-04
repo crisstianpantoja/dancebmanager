@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useStore } from '../store';
 import { Teacher, TeacherPayment } from '../types';
 import { generateId, cn, formatDateStr } from '../lib/utils';
+import { alumnosDeSesion } from '../lib/clases';
 import { Users, Plus, Phone, Trash2, Edit2, Bookmark, Calendar, DollarSign, X, KeyRound } from 'lucide-react';
 import { DeleteButton } from './DeleteButton';
 import { ImageUpload } from './ImageUpload';
@@ -226,8 +227,10 @@ export function Teachers() {
           upcomingSessions.sort((a,b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
           const nextSession = upcomingSessions[0];
           
+          // Alumno del profesor es tanto el matriculado como el que asistió a
+          // alguna de sus clases sin estar en el roster.
           const studentIds = new Set<string>();
-          teacherSessions.forEach(s => s.alumnoIds.forEach(id => studentIds.add(id)));
+          teacherSessions.forEach(s => alumnosDeSesion(s).forEach(id => studentIds.add(id)));
           
           const totalPaid = (t.pagos || []).reduce((acc, p) => acc + p.monto, 0);
 

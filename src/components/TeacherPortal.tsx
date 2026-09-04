@@ -5,6 +5,7 @@ import { DeleteButton } from './DeleteButton';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatDateStr, cn, generateId, formatCurrency, formatTime } from '../lib/utils';
 import { asistenciasDeAlumno, cobroDesdePlan, estiloCategoria, pagosPorVerificar } from '../lib/planes';
+import { alumnosDeSesion } from '../lib/clases';
 import { AppNotification, Session, Student, Payment } from '../types';
 import { apiRevisarPago } from '../lib/api';
 import { ReceiptViewer } from './ReceiptViewer';
@@ -95,7 +96,7 @@ export function TeacherPortal() {
     .filter(s => s.fecha < todayStr)
     .sort((a,b) => b.fecha.localeCompare(a.fecha));
 
-  const myStudents = data.students.filter(s => teacherSessions.some(sess => sess.alumnoIds.includes(s.id)) || s.creadoPor === teacher.id);
+  const myStudents = data.students.filter(s => teacherSessions.some(sess => alumnosDeSesion(sess).includes(s.id)) || s.creadoPor === teacher.id);
   const totalEarnings = pastClasses.reduce((sum, s) => sum + (s.valor || 0), 0);
   const upcomingEarnings = upcomingClasses.reduce((sum, s) => sum + (s.valor || 0), 0);
 
@@ -437,11 +438,11 @@ export function TeacherPortal() {
                           <>
                             {/* Sólo de consulta: la asistencia la registra el administrador. */}
                             <h4 className="font-semibold text-sm mb-3">Asistencia:</h4>
-                        {session.alumnoIds.length === 0 ? (
+                        {alumnosDeSesion(session).length === 0 ? (
                           <p className="text-sm text-ink-muted">No hay alumnos inscritos.</p>
                         ) : (
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                            {session.alumnoIds.map(studentId => {
+                            {alumnosDeSesion(session).map(studentId => {
                               const student = data.students.find(s => s.id === studentId);
                               if (!student) return null;
 
@@ -699,7 +700,7 @@ export function TeacherPortal() {
                       
                       <div className="pt-3 border-t border-ink-muted/10 text-xs">
                         <span className="text-ink-muted font-medium">Clases tomadas contigo: </span>
-                        <span className="font-bold text-magenta">{teacherSessions.filter(s => s.alumnoIds.includes(student.id) && s.asistencia?.[student.id] === 'presente').length}</span>
+                        <span className="font-bold text-magenta">{teacherSessions.filter(s => s.asistencia?.[student.id] === 'presente').length}</span>
                       </div>
                       <div className="mt-4 h-[180px] w-full border-t border-ink-muted/10 pt-2 relative">
                         <h5 className="text-[10px] uppercase font-bold text-ink-muted absolute top-2 left-0 z-10">Competencias</h5>
