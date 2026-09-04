@@ -278,9 +278,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const result = await apiLogin(documento, password, rol);
     const next: AuthSession = { token: result.token, user: result.user };
     setAuthToken(next.token);
+    // Mientras llegan los datos autenticados se muestra la pantalla de carga en
+    // vez del portal. Si no, la app pintaría el portal con los datos públicos
+    // previos al login —donde el alumno aún no está— y saldría "Estudiante no
+    // encontrado" / "no tienes calendario" hasta recargar a mano.
+    setLoading(true);
     setSession(next);
     await storage.set(SESSION_KEY, next);
-    await loadAuthenticatedData();
+    try {
+      await loadAuthenticatedData();
+    } finally {
+      setLoading(false);
+    }
   }, [loadAuthenticatedData]);
 
   const applyProgramacion = useCallback(
