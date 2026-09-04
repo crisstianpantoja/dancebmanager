@@ -558,13 +558,15 @@ export function Attendance() {
 
     if (yaRegistrados.current.has(valor)) return;
 
+    // El carnet de un alumno de plan privado no entra a la clase de grupo del
+    // día —esté o no seleccionada en pantalla—: su clase es uno a uno, así que
+    // se propone directamente una privada.
+    if (alumno.tipo === 'privada') {
+      abrirManual(alumno, valor);
+      return;
+    }
+
     if (!clase) {
-      // El carnet de un alumno de plan privado no entra a la clase de grupo del
-      // día: su clase es uno a uno, así que se propone directamente una privada.
-      if (alumno.tipo === 'privada') {
-        abrirManual(alumno, valor);
-        return;
-      }
       carnetSinClase(alumno, valor);
       return;
     }

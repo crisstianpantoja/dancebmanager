@@ -38,6 +38,13 @@ const RECIEN_VENCIDO_DIAS = 7;
 /** Orígenes válidos de una clase. 'manual' es la que no está en la agenda. */
 const TIPOS_DE_CLASE = ['academia', 'sesion', 'evento', 'programada', 'manual'];
 
+/**
+ * Clases con varios alumnos en la misma hora. Un alumno de plan privado no
+ * pertenece a ninguna de ellas; 'evento' queda fuera porque a un evento entra
+ * cualquiera, y 'manual' es justamente por donde pasa la privada.
+ */
+const CLASES_DE_GRUPO = ['academia', 'sesion', 'programada'];
+
 /** Categorías reconocidas. Cualquier otra se guarda como nula. */
 const CATEGORIAS = ['Básica', 'Intermedia', 'Avanzada', 'Grupo', 'Privada', 'Evento', 'Taller'];
 
@@ -364,10 +371,20 @@ export async function registrarAsistencia(
   const hoy = hoyStr();
 
   const [alumno] = (await db
-    .select({ id: students.id, nombre: students.nombre })
+    .select({ id: students.id, nombre: students.nombre, tipo: students.tipo })
     .from(students)
-    .where(eq(students.id, alumnoId))) as { id: string; nombre: string }[];
+    .where(eq(students.id, alumnoId))) as { id: string; nombre: string; tipo: string }[];
   if (!alumno) throw new AuthError('El carnet no corresponde a ningún alumno registrado', 404);
+
+  // Red de seguridad del servidor: el carnet de un alumno de plan privado no
+  // puede quedar pegado a la clase de grupo que esté abierta en pantalla. Los
+  // eventos sí admiten a cualquiera, privadas incluidas.
+  if (alumno.tipo === 'privada' && CLASES_DE_GRUPO.includes(clase.claseTipo)) {
+    throw new AuthError(
+      `${alumno.nombre || 'El alumno'} tiene plan privado: su asistencia se registra como clase privada, no contra una clase de grupo.`,
+      409
+    );
+  }
 
   // Doble escaneo de la misma clase: se avisa y no se vuelve a descontar.
   const previos = (await db
@@ -443,12 +460,9 @@ export async function registrarAsistencia(
       if (sesion) {
         const asistencia = { ...((sesion.asistencia as Record<string, string>) || {}) };
         asistencia[alumnoId] = 'presente';
-        const alumnoIds = Array.isArray(sesion.alumnoIds) ? [...(sesion.alumnoIds as string[])] : [];
-        if (!alumnoIds.includes(alumnoId)) alumnoIds.push(alumnoId);
-        await tx
-          .update(sessions)
-          .set({ asistencia, alumnoIds })
-          .where(eq(sessions.id, clase.sessionId));
+        // Solo la marca de asistencia: `alumnoIds` es el roster de matrícula y
+        // registrar una asistencia no matricula a nadie.
+        await tx.update(sessions).set({ asistencia }).where(eq(sessions.id, clase.sessionId));
       }
     }
   });
