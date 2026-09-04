@@ -17,7 +17,7 @@ import {
 import { useStore } from '../store';
 import type { AttendanceRecord, ClaseCategoria, Student } from '../types';
 import { apiRegisterAttendance, apiVoidAttendance, type RegistroAsistencia } from '../lib/api';
-import { clasesDelDia, type ClaseProgramada } from '../lib/clases';
+import { clasesDelDia, esClaseDeGrupo, type ClaseProgramada } from '../lib/clases';
 import {
   CATEGORIAS_MANUALES,
   categoriaSugerida,
@@ -525,6 +525,31 @@ export function Attendance() {
     addToast(`Elige la clase de ${alumno.nombre} para registrar su asistencia.`, 'warning');
   };
 
+  /**
+   * Carnet de un alumno de plan privado sin clase elegida en pantalla. Si su
+   * clase privada está en la agenda del día se registra ahí, para que la
+   * asistencia quede pegada a esa clase y la vean el profesor y el alumno; si
+   * no está —lo habitual, porque una privada no se programa— se abre el
+   * registro manual con la clase ya propuesta.
+   */
+  const carnetPrivadoSinClase = (alumno: Student, qr: string) => {
+    const suyas = clases.filter(
+      (c) =>
+        c.tipo === 'sesion' &&
+        c.sesionTipo === 'privada' &&
+        (c.alumnoIds || []).includes(alumno.id)
+    );
+
+    // Con más de una no se adivina cuál es: decide el administrador.
+    if (suyas.length === 1) {
+      addToast(`Clase seleccionada: ${suyas[0].titulo}`, 'info');
+      activarClase(suyas[0], { id: alumno.id, nombre: alumno.nombre, qr });
+      return;
+    }
+
+    abrirManual(alumno, qr);
+  };
+
   const handleScan = (valor: string) => {
     // Con el registro manual abierto la cámara espera: primero se resuelve el
     // carnet que ya está en pantalla.
@@ -558,15 +583,20 @@ export function Attendance() {
 
     if (yaRegistrados.current.has(valor)) return;
 
-    // El carnet de un alumno de plan privado no entra a la clase de grupo del
-    // día —esté o no seleccionada en pantalla—: su clase es uno a uno, así que
-    // se propone directamente una privada.
-    if (alumno.tipo === 'privada') {
+    // El carnet de un alumno de plan privado no se cuelga de una clase de
+    // grupo: su clase es uno a uno, así que se propone directamente una
+    // privada. Un evento —al que entra cualquiera— y su propia clase privada de
+    // la agenda sí se registran donde están, igual que los acepta el servidor.
+    if (alumno.tipo === 'privada' && clase && esClaseDeGrupo(clase)) {
       abrirManual(alumno, valor);
       return;
     }
 
     if (!clase) {
+      if (alumno.tipo === 'privada') {
+        carnetPrivadoSinClase(alumno, valor);
+        return;
+      }
       carnetSinClase(alumno, valor);
       return;
     }

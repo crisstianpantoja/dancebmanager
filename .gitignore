@@ -1,0 +1,6 @@
+# Dependencias instaladas: se reconstruyen desde package-lock.json.
+node_modules/
+
+# Salida de `npm run build` y el archivo que deja `npm run clean`.
+dist/
+server.js
